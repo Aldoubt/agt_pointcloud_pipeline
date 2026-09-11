@@ -46,3 +46,24 @@ def test_no_candidate_when_not_persistent():
         PolarAnalysisConfig(persistence_min=0.8),
     )
     assert result.suggestion is None
+
+
+
+def test_single_persistent_polar_bin_is_not_enough():
+    frames = [
+        CloudFrame(float(i), 'base_link', [(-0.8, 0.0, 0.2)])
+        for i in range(20)
+    ]
+    result = analyze_polar_persistence(
+        frames,
+        RigidTransform(),
+        PolarAnalysisConfig(
+            angle_bin_deg=5.0,
+            range_bin_m=0.1,
+            min_range_m=0.2,
+            max_range_m=1.5,
+            persistence_min=0.8,
+            min_persistent_range_bins=2,
+        ),
+    )
+    assert result.suggestion is None
