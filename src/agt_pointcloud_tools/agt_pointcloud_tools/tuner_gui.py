@@ -246,7 +246,7 @@ class TunerWindow(QMainWindow):
         return {
             'agt_pointcloud_filter': {
                 'ros__parameters': {
-                    'filter_chain': ['range', 'self_box', 'rear_sector'],
+                    # Self-contained preview profile. Merge these rear-sector\n                    # parameters into navigation.yaml after full-bag acceptance.\n                    'filter_chain': ['rear_sector'],
                     'filters.rear_sector.type':
                         'agt_pointcloud_pipeline/SectorFilterPlugin',
                     'filters.rear_sector.center_deg': p['center_deg'],
