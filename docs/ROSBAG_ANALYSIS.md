@@ -41,13 +41,7 @@ agt-lidar-analyze \
   --output /tmp/lidar_analysis.yaml
 ```
 
-If the selected cloud is already expressed in the intended robot frame, identity must be explicit:
-
-```bash
-agt-lidar-analyze ... --assume-source-is-robot-frame
-```
-
-The tool refuses to silently treat a tilted LiDAR frame as `base_link`.
+If the selected cloud is already expressed in the intended robot frame, identity must be explicit with `--assume-source-is-robot-frame`.
 
 ## Outputs
 
@@ -62,14 +56,46 @@ Persistence for a polar cell is:
 frames containing the cell / analyzed frames
 ```
 
-Only a bounded rear search window and bounded range/Z region are analyzed by default. This avoids recommending an infinite rear dead zone.
+## RViz full-bag A/B validation
 
-## Recommended validation
+After copying the suggested values, launch:
 
-1. inspect the suggested sector;
-2. copy the snippet into the analysis profile;
-3. launch the debug runtime;
-4. replay the **entire** bag;
-5. inspect raw/rejected/filtered clouds;
-6. verify turns, slopes, reversing, walls and real rear obstacles;
-7. only then promote the parameters to navigation.
+```bash
+ros2 launch agt_pointcloud_pipeline filter_debug.launch.py \
+  profile:=analysis \
+  input_topic:=/agt/livox/points \
+  target_frame:=base_link \
+  rear_center_deg:=180.0 \
+  rear_width_deg:=20.0 \
+  rear_min_range_m:=0.3 \
+  rear_max_range_m:=1.2
+```
+
+Then replay the whole bag in another terminal:
+
+```bash
+ros2 bag play /path/to/bag
+```
+
+RViz displays:
+
+- Raw: gray;
+- Rejected: red;
+- Filtered: green.
+
+The runtime logs cumulative input/output/rejected counts and per-filter rejection counts once per second in debug mode.
+
+For a raw Livox `CustomMsg` bag, run the project's existing Livox-to-PointCloud2 adapter before this runtime check. The offline analyzer itself can read CustomMsg directly.
+
+## Acceptance
+
+Inspect the entire motion sequence, not only the stationary calibration segment:
+
+- turns;
+- slopes;
+- reversing;
+- close walls;
+- real rear obstacles;
+- people behind the robot.
+
+Only promote a sector to the navigation profile when self-interference is removed without hiding useful environment geometry.

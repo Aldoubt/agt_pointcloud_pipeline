@@ -1,4 +1,5 @@
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -69,6 +70,7 @@ public:
     tf_timeout_sec_ = declare_parameter<double>("tf_timeout_sec", 0.05);
     publish_raw_ = declare_parameter<bool>("publish_raw", true);
     publish_rejected_ = declare_parameter<bool>("publish_rejected", true);
+    statistics_period_sec_ = declare_parameter<double>("statistics_period_sec", 2.0);
 
     const auto filter_names = declare_parameter<std::vector<std::string>>(
       "filter_chain", {"range", "self_box", "rear_sector"});
@@ -93,6 +95,12 @@ public:
     sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
       input_topic_, rclcpp::SensorDataQoS(),
       std::bind(&FilterNode::on_cloud, this, std::placeholders::_1));
+
+    if (statistics_period_sec_ > 0.0) {
+      const auto period_ms = std::chrono::milliseconds(
+        std::max(100, static_cast<int>(statistics_period_sec_ * 1000.0)));
+      stats_timer_ = create_wall_timer(period_ms, std::bind(&FilterNode::log_statistics, this));
+    }
 
     RCLCPP_INFO(
       get_logger(), "Point cloud pipeline: %s -> %s (%zu filters, target_frame=%s)",
@@ -153,6 +161,7 @@ private:
     std::vector<std::array<float, 3>> kept;
     std::vector<std::array<float, 3>> rejected;
     const std::size_t count = static_cast<std::size_t>(cloud->width) * cloud->height;
+    input_points_ += count;
     kept.reserve(count);
     rejected.reserve(count / 8 + 1);
 
@@ -180,6 +189,7 @@ private:
         }
 
         if (remove) {
+          ++rejected_points_;
           if (publish_rejected_) rejected.push_back({*x, *y, *z});
         } else {
           kept.push_back({*x, *y, *z});
@@ -191,14 +201,40 @@ private:
       return;
     }
 
+    output_points_ += kept.size();
+    ++clouds_;
     filtered_pub_->publish(make_xyz_cloud(cloud->header, kept));
     if (publish_rejected_) {
       rejected_pub_->publish(make_xyz_cloud(cloud->header, rejected));
     }
   }
 
+  void log_statistics()
+  {
+    if (input_points_ == 0) {
+      return;
+    }
+    const double rejected_pct = 100.0 * static_cast<double>(rejected_points_) /
+      static_cast<double>(input_points_);
+    RCLCPP_INFO(
+      get_logger(),
+      "filter stats: clouds=%llu input=%llu output=%llu rejected=%llu (%.2f%%) invalid=%llu",
+      static_cast<unsigned long long>(clouds_),
+      static_cast<unsigned long long>(input_points_),
+      static_cast<unsigned long long>(output_points_),
+      static_cast<unsigned long long>(rejected_points_),
+      rejected_pct,
+      static_cast<unsigned long long>(invalid_removed_));
+    for (const auto & entry : filters_) {
+      RCLCPP_INFO(
+        get_logger(), "  removed[%s]=%llu", entry.name.c_str(),
+        static_cast<unsigned long long>(removed_by_filter_[entry.name]));
+    }
+  }
+
   std::string input_topic_, target_frame_, raw_topic_, filtered_topic_, rejected_topic_;
   double tf_timeout_sec_{};
+  double statistics_period_sec_{};
   bool publish_raw_{};
   bool publish_rejected_{};
 
@@ -207,12 +243,17 @@ private:
   pluginlib::ClassLoader<agt_pointcloud_pipeline::FilterPlugin> loader_;
   std::vector<NamedPlugin> filters_;
   std::unordered_map<std::string, std::uint64_t> removed_by_filter_;
+  std::uint64_t clouds_{};
+  std::uint64_t input_points_{};
+  std::uint64_t output_points_{};
+  std::uint64_t rejected_points_{};
   std::uint64_t invalid_removed_{};
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr raw_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr filtered_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr rejected_pub_;
+  rclcpp::TimerBase::SharedPtr stats_timer_;
 };
 
 int main(int argc, char ** argv)
