@@ -11,6 +11,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools', 'PyYAML'],
+    tests_require=['pytest'],
     zip_safe=True,
     maintainer='Xuan Yang',
     maintainer_email='xuanyang.robotics@gmail.com',
