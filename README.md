@@ -8,6 +8,7 @@ One shared filtering core serves:
 
 - online navigation / mapping / localization preprocessing;
 - offline rosbag analysis;
+- visual parameter tuning;
 - RViz A/B validation of raw, rejected and filtered clouds;
 - automated parameter analysis by scripts or AI agents.
 
@@ -17,39 +18,9 @@ The core rule is **one filter definition, multiple frontends**.
 
 - `agt_pointcloud_core`: ROS-independent C++ filter primitives.
 - `agt_pointcloud_pipeline`: ROS 2 Humble runtime + pluginlib filters.
-- `agt_pointcloud_tools`: rosbag IMU/static detection and polar-persistence analysis.
+- `agt_pointcloud_tools`: rosbag static detection, polar persistence analysis and tuner UI.
 
-## Runtime
-
-```text
-PointCloud2
-    |
-    v
-TF classification in robot frame
-    |
-range -> self box -> rear sector -> ...
-    |
-    +--> /agt/pointcloud/raw
-    +--> /agt/pointcloud/rejected
-    '--> /agt/pointcloud/filtered
-```
-
-Run:
-
-```bash
-ros2 launch agt_pointcloud_pipeline filter.launch.py profile:=navigation
-```
-
-Profiles:
-
-- `navigation`: bounded rear mask allowed;
-- `mapping`: conservative, no default rear-sector deletion;
-- `localization`: preserve scan-matching features;
-- `analysis`: debug outputs enabled.
-
-## Automatic rosbag analysis
-
-The analyzer first detects stationary IMU intervals, then accumulates LiDAR observations over the selected interval and calculates an angle/range persistence map.
+## 1. Automatic rosbag analysis
 
 ```bash
 agt-lidar-analyze \
@@ -62,11 +33,42 @@ agt-lidar-analyze \
 
 Outputs:
 
-- static intervals and selected interval;
+- detected static intervals;
+- selected static interval;
 - polar persistence CSV;
 - bounded rear-sector recommendation;
-- runtime-compatible parameter snippet.
+- runtime parameter snippet.
 
-For clouds already expressed in the robot frame, use `--assume-source-is-robot-frame` explicitly.
+## 2. Visual tuning
 
-See `docs/ROSBAG_ANALYSIS.md`, `docs/ARCHITECTURE.md`, `docs/PLUGIN_API.md`, and `docs/INTEGRATION_V3.md`.
+```bash
+agt-lidar-tuner \
+  --csv /tmp/lidar_analysis_polar.csv \
+  --suggestion /tmp/lidar_analysis_suggested_filter.yaml \
+  --output /tmp/tuned_filter.yaml
+```
+
+The GUI provides a robot-centric top view and editable angle/range/Z bounds.
+
+## 3. Full-bag RViz validation
+
+```bash
+ros2 launch agt_pointcloud_pipeline filter_debug.launch.py profile:=analysis
+```
+
+Then replay the bag. RViz shows:
+
+- Raw: gray;
+- Rejected: red;
+- Filtered: green.
+
+Only parameters that survive the complete motion replay should be promoted to a navigation profile.
+
+Profiles:
+
+- `navigation`: bounded rear mask allowed;
+- `mapping`: conservative;
+- `localization`: preserve scan-matching features;
+- `analysis`: debug outputs enabled.
+
+See `docs/ROSBAG_ANALYSIS.md`, `docs/TUNER.md`, `docs/ARCHITECTURE.md`, `docs/PLUGIN_API.md`, and `docs/INTEGRATION_V3.md`.
