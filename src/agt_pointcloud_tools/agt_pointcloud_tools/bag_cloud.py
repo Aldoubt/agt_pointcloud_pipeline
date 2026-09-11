@@ -132,3 +132,67 @@ def iter_cloud_frames(
         emitted += 1
         if max_frames > 0 and emitted >= max_frames:
             break
+
+
+def collect_cloud_frames_by_segments(
+    bag_path: str,
+    topic: str,
+    segments,
+    point_stride: int = 1,
+    max_frames_per_segment: int = 100,
+):
+    """Read the cloud topic once and distribute frames into static segments.
+
+    Segment indices are preserved from the caller even when the segments are
+    duration-sorted rather than chronological.
+    """
+    if topic == 'auto':
+        topic, _ = discover_cloud_topic(bag_path)
+
+    reader = _open_reader(bag_path)
+    type_map = {info.name: info.type for info in reader.get_all_topics_and_types()}
+    if topic not in type_map:
+        raise RuntimeError(f'Cloud topic {topic!r} not found in bag')
+    msg_type_name = type_map[topic]
+    if msg_type_name not in SUPPORTED_POINTCLOUD_TYPES:
+        raise RuntimeError(
+            f'Cloud topic {topic!r} has unsupported type {msg_type_name!r}')
+
+    msg_type = get_message(msg_type_name)
+    frames_by_segment = {i: [] for i in range(len(segments))}
+    bag_t0 = None
+    max_end = max((s.end for s in segments), default=0.0)
+
+    while reader.has_next():
+        name, data, timestamp_ns = reader.read_next()
+        t = timestamp_ns * 1e-9
+        if bag_t0 is None:
+            bag_t0 = t
+        rel_t = t - bag_t0
+
+        if rel_t > max_end:
+            break
+        if name != topic:
+            continue
+
+        matching = [
+            i for i, segment in enumerate(segments)
+            if segment.start <= rel_t <= segment.end
+            and (max_frames_per_segment <= 0
+                 or len(frames_by_segment[i]) < max_frames_per_segment)
+        ]
+        if not matching:
+            continue
+
+        msg = deserialize_message(data, msg_type)
+        frame_id = getattr(getattr(msg, 'header', None), 'frame_id', '') or ''
+        points = _extract_points(msg, msg_type_name, point_stride)
+        frame = CloudFrame(rel_t, frame_id, points)
+        for i in matching:
+            frames_by_segment[i].append(frame)
+
+        if max_frames_per_segment > 0 and all(
+                len(v) >= max_frames_per_segment for v in frames_by_segment.values()):
+            break
+
+    return frames_by_segment
