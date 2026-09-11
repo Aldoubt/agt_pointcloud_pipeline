@@ -1,0 +1,13 @@
+build/
+install/
+log/
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/
+*.db3
+*.mcap
+*.pcd
+analysis_output/
+static_segments.yaml

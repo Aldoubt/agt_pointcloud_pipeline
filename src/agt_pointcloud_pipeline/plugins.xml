@@ -1,0 +1,17 @@
+<library path="agt_pointcloud_pipeline_plugins">
+  <class name="agt_pointcloud_pipeline/RangeFilterPlugin"
+         type="agt_pointcloud_pipeline::RangeFilterPlugin"
+         base_class_type="agt_pointcloud_pipeline::FilterPlugin">
+    <description>Euclidean source-frame range filter.</description>
+  </class>
+  <class name="agt_pointcloud_pipeline/BoxFilterPlugin"
+         type="agt_pointcloud_pipeline::BoxFilterPlugin"
+         base_class_type="agt_pointcloud_pipeline::FilterPlugin">
+    <description>Robot-frame axis-aligned exclusion box.</description>
+  </class>
+  <class name="agt_pointcloud_pipeline/SectorFilterPlugin"
+         type="agt_pointcloud_pipeline::SectorFilterPlugin"
+         base_class_type="agt_pointcloud_pipeline::FilterPlugin">
+    <description>Range- and height-bounded robot-frame angular exclusion sector.</description>
+  </class>
+</library>

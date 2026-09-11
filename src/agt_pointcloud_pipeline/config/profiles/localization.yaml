@@ -1,0 +1,25 @@
+agt_pointcloud_filter:
+  ros__parameters:
+    input_topic: /agt/livox/points
+    target_frame: base_link
+    filtered_topic: /agt/pointcloud/filtered
+    raw_topic: /agt/pointcloud/raw
+    rejected_topic: /agt/pointcloud/rejected
+    tf_timeout_sec: 0.05
+    publish_raw: false
+    publish_rejected: false
+
+    # Preserve environmental features for scan matching.
+    filter_chain: [range, self_box]
+
+    filters.range.type: agt_pointcloud_pipeline/RangeFilterPlugin
+    filters.range.min_m: 0.5
+    filters.range.max_m: 120.0
+
+    filters.self_box.type: agt_pointcloud_pipeline/BoxFilterPlugin
+    filters.self_box.x_min: -0.56
+    filters.self_box.x_max: 0.56
+    filters.self_box.y_min: -0.44
+    filters.self_box.y_max: 0.44
+    filters.self_box.z_min: -0.10
+    filters.self_box.z_max: 0.45
