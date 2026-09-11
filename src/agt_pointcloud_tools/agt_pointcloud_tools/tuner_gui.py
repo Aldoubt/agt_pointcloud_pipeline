@@ -49,6 +49,8 @@ def load_cells(path: str):
 
 def load_suggestion(path: str):
     data = yaml.safe_load(Path(path).expanduser().read_text(encoding='utf-8')) or {}
+    if data.get('status') != 'candidate':
+        return None
     params = data.get('runtime_parameter_snippet', {})
     return {
         'center_deg': float(params.get('filters.rear_sector.center_deg', 180.0)),
@@ -57,6 +59,27 @@ def load_suggestion(path: str):
         'max_range_m': float(params.get('filters.rear_sector.max_range_m', 2.0)),
         'z_min_m': float(params.get('filters.rear_sector.z_min_m', -0.5)),
         'z_max_m': float(params.get('filters.rear_sector.z_max_m', 1.5)),
+    }
+
+
+def initial_from_cells(cells):
+    min_r = min(c.range_m for c in cells)
+    max_r = max(c.range_m for c in cells)
+    min_z = min(c.z_min_m for c in cells)
+    max_z = max(c.z_max_m for c in cells)
+
+    # Sparse diagnostic CSVs can contain one cell only. Keep the initial
+    # geometry editable and valid instead of collapsing min/max to the same
+    # value and presenting an empty/invalid tuner.
+    r_pad = max(0.10, 0.10 * max(max_r, 1.0))
+    z_pad = 0.10
+    return {
+        'center_deg': 180.0,
+        'width_deg': 20.0,
+        'min_range_m': max(0.0, min(0.2, min_r - r_pad)),
+        'max_range_m': max(max_r + r_pad, 0.5),
+        'z_min_m': min_z - z_pad,
+        'z_max_m': max_z + z_pad,
     }
 
 
@@ -288,18 +311,8 @@ def _parser():
 def main():
     args = _parser().parse_args()
     cells = load_cells(args.csv)
-    initial = (
-        load_suggestion(args.suggestion)
-        if args.suggestion
-        else {
-            'center_deg': 180.0,
-            'width_deg': 10.0,
-            'min_range_m': 0.2,
-            'max_range_m': max(c.range_m for c in cells),
-            'z_min_m': min(c.z_min_m for c in cells),
-            'z_max_m': max(c.z_max_m for c in cells),
-        }
-    )
+    suggestion = load_suggestion(args.suggestion) if args.suggestion else None
+    initial = suggestion if suggestion is not None else initial_from_cells(cells)
 
     app = QApplication([])
     window = TunerWindow(cells, initial, args.output)
