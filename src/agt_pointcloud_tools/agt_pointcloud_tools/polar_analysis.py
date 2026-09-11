@@ -181,17 +181,25 @@ def analyze_polar_persistence(
         a for a, keys in by_angle.items()
         if len(keys) >= threshold
     ]
-    if not candidate_angles:
-        # Sparse pole-like structures can occupy only one or two range bins.
-        threshold = cfg.min_persistent_range_bins
-        candidate_angles = [
-            a for a, keys in by_angle.items()
-            if len(keys) >= threshold
-        ]
-    if not candidate_angles:
-        return PolarAnalysisResult(frame_count, dict(stats), None)
-
     groups = _group_circular(candidate_angles, total_angle_bins)
+
+    if not groups:
+        # Sparse pole/chassis structures can straddle an angular-bin boundary.
+        # Requiring every single angle bin to contain N persistent range bins
+        # incorrectly rejects a continuous cluster around boundaries such as
+        # 180 deg.  In the sparse fallback, first form contiguous circular
+        # angle groups, then require the group as a whole to span enough
+        # persistent range bins.
+        sparse_groups = _group_circular(list(by_angle.keys()), total_angle_bins)
+        groups = []
+        for group in sparse_groups:
+            group_keys = [key for a in group for key in by_angle[a]]
+            distinct_range_bins = {key[1] for key in group_keys}
+            if len(distinct_range_bins) >= cfg.min_persistent_range_bins:
+                groups.append(group)
+
+    if not groups:
+        return PolarAnalysisResult(frame_count, dict(stats), None)
 
     def group_score(group):
         keys = [key for a in group for key in by_angle[a]]
