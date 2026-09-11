@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
@@ -50,21 +51,40 @@ def discover_cloud_topic(bag_path: str) -> Tuple[str, str]:
     raise RuntimeError(f'No supported cloud topic found. Supported types: {supported}')
 
 
+def _valid_xyz(x: float, y: float, z: float) -> bool:
+    # A (0, 0, 0) return is not a physical LiDAR hit.  In Livox CustomMsg
+    # recordings these invalid returns can be numerous; after applying the
+    # sensor extrinsic they collapse onto the LiDAR mounting translation and
+    # look like a perfectly persistent near-field obstacle.
+    if not (isfinite(x) and isfinite(y) and isfinite(z)):
+        return False
+    return x * x + y * y + z * z > 1.0e-12
+
+
 def _extract_points(msg, msg_type: str, point_stride: int):
     stride = max(1, int(point_stride))
+    out = []
+    valid_index = 0
+
     if msg_type == 'sensor_msgs/msg/PointCloud2':
-        out = []
-        for i, p in enumerate(point_cloud2.read_points(
-                msg, field_names=('x', 'y', 'z'), skip_nans=True)):
-            if i % stride == 0:
-                out.append((float(p[0]), float(p[1]), float(p[2])))
+        for p in point_cloud2.read_points(
+                msg, field_names=('x', 'y', 'z'), skip_nans=True):
+            x, y, z = float(p[0]), float(p[1]), float(p[2])
+            if not _valid_xyz(x, y, z):
+                continue
+            if valid_index % stride == 0:
+                out.append((x, y, z))
+            valid_index += 1
         return out
 
     # Livox CustomMsg is loaded dynamically; no compile-time driver dependency.
-    out = []
-    for i, p in enumerate(msg.points):
-        if i % stride == 0:
-            out.append((float(p.x), float(p.y), float(p.z)))
+    for p in msg.points:
+        x, y, z = float(p.x), float(p.y), float(p.z)
+        if not _valid_xyz(x, y, z):
+            continue
+        if valid_index % stride == 0:
+            out.append((x, y, z))
+        valid_index += 1
     return out
 
 
