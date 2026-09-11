@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(agt_pointcloud_core REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(pluginlib REQUIRED)
@@ -25,7 +26,7 @@ target_include_directories(filter_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(filter_node
-  agt_pointcloud_core rclcpp sensor_msgs tf2 tf2_ros pluginlib)
+  agt_pointcloud_core rclcpp sensor_msgs std_msgs tf2 tf2_ros pluginlib)
 
 pluginlib_export_plugin_description_file(agt_pointcloud_pipeline plugins.xml)
 

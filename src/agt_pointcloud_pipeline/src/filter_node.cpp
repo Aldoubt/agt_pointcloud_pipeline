@@ -13,6 +13,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "std_msgs/msg/header.hpp"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Transform.h"
 #include "tf2_ros/buffer.h"
@@ -70,7 +71,7 @@ public:
     publish_rejected_ = declare_parameter<bool>("publish_rejected", true);
 
     const auto filter_names = declare_parameter<std::vector<std::string>>(
-      "filters", {"range", "self_box", "rear_sector"});
+      "filter_chain", {"range", "self_box", "rear_sector"});
     for (const auto & name : filter_names) {
       const std::string prefix = "filters." + name;
       const auto type = declare_parameter<std::string>(prefix + ".type", "");
