@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'agt-lidar-analyze = agt_pointcloud_tools.cli:main',
+            'agt-lidar-consensus = agt_pointcloud_tools.consensus_cli:main',
             'agt-lidar-tuner = agt_pointcloud_tools.tuner_gui:main',
         ],
     },
