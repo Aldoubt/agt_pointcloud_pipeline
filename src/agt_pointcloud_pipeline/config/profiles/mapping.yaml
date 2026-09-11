@@ -10,7 +10,7 @@ agt_pointcloud_filter:
     publish_rejected: true
 
     # Mapping stays conservative: no broad rear-sector deletion.
-    filters: [range, self_box]
+    filter_chain: [range, self_box]
 
     filters.range.type: agt_pointcloud_pipeline/RangeFilterPlugin
     filters.range.min_m: 0.5

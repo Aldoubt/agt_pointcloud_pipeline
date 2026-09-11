@@ -9,7 +9,7 @@ agt_pointcloud_filter:
     publish_raw: true
     publish_rejected: true
 
-    filters: [range, self_box, rear_sector]
+    filter_chain: [range, self_box, rear_sector]
 
     filters.range.type: agt_pointcloud_pipeline/RangeFilterPlugin
     filters.range.min_m: 0.5
