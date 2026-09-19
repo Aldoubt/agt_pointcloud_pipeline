@@ -1,0 +1,5 @@
+# Example only. Replace with measured/calibrated source-frame -> robot-frame transform.
+# The analyzer intentionally does not assume an identity transform for a tilted LiDAR.
+source_to_robot:
+  translation: [0.0, 0.0, 0.0]
+  rpy_deg: [0.0, 0.0, 0.0]
