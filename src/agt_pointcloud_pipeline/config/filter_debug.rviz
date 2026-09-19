@@ -19,6 +19,10 @@ Visualization Manager:
       Name: Raw
       Enabled: true
       Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
         Value: /agt/pointcloud/raw
       Queue Size: 3
       Size (Pixels): 2
@@ -30,6 +34,10 @@ Visualization Manager:
       Name: Rejected
       Enabled: true
       Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
         Value: /agt/pointcloud/rejected
       Queue Size: 3
       Size (Pixels): 4
@@ -41,6 +49,10 @@ Visualization Manager:
       Name: Filtered
       Enabled: true
       Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
         Value: /agt/pointcloud/filtered
       Queue Size: 3
       Size (Pixels): 2
